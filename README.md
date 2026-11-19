@@ -213,39 +213,4 @@ WebUI 设置页会出现 **Preset Model Matcher** 分组：
 
 本扩展只包裹 `main_entry.refresh_models` 和 `main_entry.on_preset_change`，并在卸载时还原。如果另一个扩展也包裹了这两个函数，最后加载的那个生效；可临时停用另一个扩展确认。
 
-## 如果坚持改源码
-
-不需要。但如果要改成源码级修改，位置是：
-
-- `sd-webui-forge-classic/modules_forge/main_entry.py`
-  - `refresh_models()`（约 91–125 行）：返回前过滤 `ckpt_list`。
-  - `on_preset_change()`（约 293–347 行）：把返回列表的第 1 项改成过滤后的 `gr.update(choices=..., value=...)`。
-  - Preset 事件链（约 275–281 行）和 `refresh_model_list`（约 66–72 行）不需要改，它们会调用上面两个函数。
-- `modules/ui.py:200` 的 `main_entry.refresh_models()` 也不需要改，动态查找模块属性。
-
-本扩展的 Hook 方案与上述源码修改等价，但不会在升级 Forge 时产生补丁冲突。
-
-## 开发自测
-
-工具放在工作区的 `Harness_Tool/`，不进入 WebUI 运行时：
-
-```bat
-cd /d "E:\Stable Diffusion WebUI Forge Neo AKI"
-python\python.exe Harness_Tool\preset_matcher_selftest.py
-python\python.exe Harness_Tool\preset_matcher_binding_selftest.py
-```
-
-- `preset_matcher_selftest.py`：扫描六个目录（当前 Forge、Forge 备份、ComfyUI 的 `diffusion_models` / `checkpoints`、ComfyUI 备份的 `checkpoints` / `diffusion_models`），按目录统计 `classified` / `unknown` / `unsupported`，校验锚点模型、过滤不变量、缓存往返，以及 Civitai 侧车的两种命名、`.civitai.json`、非 Checkpoint 拒绝、SD2 拒绝、文件名优先级和缓存失效；完整分类表写入 `Harness_Tool/preset_matcher_selftest_report.txt`。
-- `preset_matcher_binding_selftest.py`：用假的 `modules` / `modules_forge` / `gradio` 模块加载 `ui_binding.py`，验证回调注册、设置注册、两个包裹函数、以及卸载还原。
-
-当前清单的参考结果（模型目录变化后会不同）：
-
-- Forge：52 个文件，43 个识别成功，4 个 `unknown`，5 个 SD3 `unsupported`；
-- Forge 备份：225 个文件，178 个识别成功，47 个 `unknown`；
-- ComfyUI `diffusion_models`：47 个文件，30 个识别成功，7 个 `unknown`，10 个 `unsupported`；
-- ComfyUI `checkpoints`：0 个文件（空目录），测试记为通过；
-- ComfyUI 备份 `checkpoints`：4 个 SVD 文件，全部 `unsupported`；
-- ComfyUI 备份 `diffusion_models`：210 个文件，131 个识别成功，37 个 `unknown`，42 个 `unsupported`；
-- 合计：538 个文件，382 个识别成功（71.0%），156 个 `unknown/unsupported`，61 条锚点断言通过。
-
 这两个脚本不启动 Forge，也不替代一次真实的 WebUI 重启验证。
