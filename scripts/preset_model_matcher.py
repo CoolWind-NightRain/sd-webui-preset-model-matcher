@@ -33,6 +33,16 @@ import re
 import struct
 import threading
 import time
+import sys
+import types
+
+# Forge Neo's script loader (modules/script_loading.py) does not register
+# the module in sys.modules before exec_module(). Python 3.13's dataclasses
+# implementation requires sys.modules[cls.__module__] to exist, otherwise
+# @dataclass raises AttributeError. Register a placeholder so the decorator
+# can find a namespace.
+if __name__ not in sys.modules:
+    sys.modules[__name__] = types.ModuleType(__name__)
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
